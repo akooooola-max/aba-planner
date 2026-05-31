@@ -1,0 +1,747 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+<title>ABA支援プランナー</title>
+<style>
+*{box-sizing:border-box;margin:0;padding:0;-webkit-tap-highlight-color:transparent}
+body{font-family:-apple-system,BlinkMacSystemFont,'Hiragino Sans','Yu Gothic',sans-serif;background:#eef2f7;display:flex;flex-direction:column;height:100vh;max-width:640px;margin:0 auto}
+
+/* Header */
+.hdr{background:#2b6cb0;color:white;padding:14px 16px;display:flex;align-items:center;gap:10px;flex-shrink:0}
+.hdr-icon{font-size:1.4rem}
+.hdr-title{font-size:1rem;font-weight:700}
+.hdr-sub{font-size:0.75rem;opacity:0.8}
+
+/* Chat area */
+.chat{flex:1;overflow-y:auto;padding:16px 12px;display:flex;flex-direction:column;gap:12px}
+
+/* Bubbles */
+.row{display:flex;align-items:flex-end;gap:8px}
+.row.app{align-self:flex-start;max-width:88%}
+.row.user{align-self:flex-end;flex-direction:row-reverse;max-width:88%}
+.avatar{width:34px;height:34px;border-radius:50%;background:#2b6cb0;display:flex;align-items:center;justify-content:center;font-size:1rem;flex-shrink:0}
+.bubble{padding:12px 14px;border-radius:18px;font-size:0.93rem;line-height:1.7}
+.bubble.app{background:white;border-bottom-left-radius:4px;box-shadow:0 1px 4px rgba(0,0,0,0.08);color:#1a202c}
+.bubble.user{background:#2b6cb0;color:white;border-bottom-right-radius:4px}
+.bubble b{font-weight:700}
+.bubble ul{padding-left:16px;margin-top:4px}
+.bubble li{margin-bottom:3px}
+
+/* Quick replies */
+.qr-wrap{display:flex;flex-wrap:wrap;gap:8px;margin-top:4px;padding-left:42px}
+.qr-btn{background:white;border:2px solid #4299e1;color:#2b6cb0;border-radius:99px;padding:7px 14px;font-size:0.85rem;font-weight:600;cursor:pointer;transition:all 0.15s}
+.qr-btn:active,.qr-btn.used{background:#4299e1;color:white}
+
+/* Typing indicator */
+.typing{display:flex;gap:4px;padding:12px 14px;background:white;border-radius:18px;border-bottom-left-radius:4px;width:54px;box-shadow:0 1px 4px rgba(0,0,0,0.08)}
+.dot{width:8px;height:8px;border-radius:50%;background:#a0aec0;animation:blink 1.2s infinite}
+.dot:nth-child(2){animation-delay:.2s}
+.dot:nth-child(3){animation-delay:.4s}
+@keyframes blink{0%,80%,100%{opacity:.3}40%{opacity:1}}
+
+/* Input */
+.input-area{background:white;border-top:1px solid #e2e8f0;padding:10px 12px;display:flex;gap:8px;flex-shrink:0}
+.inp{flex:1;border:2px solid #e2e8f0;border-radius:24px;padding:10px 16px;font-size:0.93rem;outline:none;resize:none;max-height:100px;font-family:inherit;line-height:1.5}
+.inp:focus{border-color:#4299e1}
+.send-btn{width:44px;height:44px;border-radius:50%;background:#2b6cb0;border:none;color:white;font-size:1.2rem;cursor:pointer;flex-shrink:0;display:flex;align-items:center;justify-content:center}
+.send-btn:active{background:#1a4a8a}
+
+/* Plan output */
+.plan-wrap{display:flex;flex-direction:column;gap:0}
+.plan-section{margin-bottom:14px}
+.plan-section h4{font-size:0.78rem;font-weight:700;color:#4299e1;letter-spacing:.06em;text-transform:uppercase;margin-bottom:8px;padding-bottom:5px;border-bottom:2px solid #ebf8ff}
+.plan-section p{font-size:0.88rem;line-height:1.8;margin-bottom:6px;color:#2d3748}
+.abc-tbl{width:100%;border-collapse:collapse;font-size:0.85rem;margin-bottom:4px}
+.abc-tbl th{background:#4299e1;color:white;padding:7px 9px;text-align:left;font-weight:600}
+.abc-tbl td{padding:7px 9px;border-bottom:1px solid #e2e8f0;line-height:1.6}
+.abc-tbl tr:last-child td{border-bottom:none}
+.step-li{display:flex;gap:8px;margin-bottom:9px;font-size:0.88rem;line-height:1.6;color:#2d3748}
+.snum{width:22px;height:22px;border-radius:50%;background:#4299e1;color:white;display:flex;align-items:center;justify-content:center;font-size:0.75rem;font-weight:700;flex-shrink:0;margin-top:2px}
+.goal-box{background:#f0fff4;border:2px solid #68d391;border-radius:10px;padding:13px;font-size:0.88rem;line-height:1.8;font-weight:600;color:#22543d}
+.parent-box{background:#faf5ff;border:1px solid #e9d8fd;border-radius:10px;padding:13px;font-size:0.86rem;line-height:1.9;color:#44337a}
+.warn-box{background:#fff5f5;border:1px solid #fed7d7;border-radius:10px;padding:11px;font-size:0.85rem;color:#c53030;line-height:1.6}
+.chk-item{display:flex;gap:8px;padding:6px 0;border-bottom:1px solid #f0f0f0;font-size:0.86rem;color:#2d3748;align-items:flex-start}
+.chkbox{width:18px;height:18px;border:2px solid #cbd5e0;border-radius:3px;flex-shrink:0;margin-top:1px}
+
+.btn-print{width:100%;padding:13px;border:none;border-radius:10px;background:#38a169;color:white;font-size:0.95rem;font-weight:700;cursor:pointer;margin-top:10px}
+.btn-restart{width:100%;padding:13px;border:2px solid #4299e1;border-radius:10px;background:white;color:#4299e1;font-size:0.95rem;font-weight:700;cursor:pointer;margin-top:8px}
+.note-s{font-size:0.78rem;color:#a0aec0;text-align:center;margin-top:8px;line-height:1.6}
+
+@media print{
+  .input-area,.hdr,.no-print{display:none!important}
+  body{background:white;height:auto}
+  .chat{overflow:visible;height:auto}
+  .bubble.app{box-shadow:none;border:1px solid #e2e8f0}
+}
+</style>
+</head>
+<body>
+
+<div class="hdr">
+  <span class="hdr-icon">📋</span>
+  <div>
+    <div class="hdr-title">ABA支援プランナー</div>
+    <div class="hdr-sub">お子さまの様子を入力してください</div>
+  </div>
+</div>
+
+<div class="chat" id="chat"></div>
+
+<div class="input-area no-print">
+  <textarea class="inp" id="inp" placeholder="こちらに入力してください…" rows="1" onkeydown="handleKey(event)" oninput="resize(this)"></textarea>
+  <button class="send-btn" onclick="send()">↑</button>
+</div>
+
+<script>
+// =========================================================
+// STATE
+// =========================================================
+const S = {
+  phase: 'welcome',   // welcome → gather → asking → output
+  slots: {
+    rawText: '',       // 最初の入力全文
+    category: null,    // food/seat/meltdown/comm/other
+    targetItem: '',    // 「白ごはん」など具体的対象
+    scene: '',         // いつ・どこで
+    behavior: '',      // 具体的行動
+    otherSimilar: '',  // 他のものはどうか
+    modifiedOk: '',    // 形を変えたら食べるか / 声かけで戻るか など
+    staffResponse: '', // 現在の職員対応
+    background: '',    // 背景・思い当たること
+    strength: '',      // 強み・好きなこと
+  },
+  qQueue: [],          // 質問キュー [{key, text, qr:[]}]
+  turn: 0,
+};
+
+// =========================================================
+// CHAT ENGINE
+// =========================================================
+function appMsg(html, qr=[]){
+  const chat = document.getElementById('chat');
+  const row = document.createElement('div');
+  row.className = 'row app';
+  row.innerHTML = `<div class="avatar">🤖</div><div class="bubble app">${html}</div>`;
+  chat.appendChild(row);
+  if(qr.length){
+    const wrap = document.createElement('div');
+    wrap.className = 'qr-wrap no-print';
+    qr.forEach((label,i)=>{
+      const btn = document.createElement('button');
+      btn.className = 'qr-btn';
+      btn.textContent = `${i+1}. ${label}`;
+      btn.onclick = ()=>{
+        wrap.querySelectorAll('.qr-btn').forEach(b=>b.classList.remove('used'));
+        btn.classList.add('used');
+        handleInput(`${i+1}`);
+      };
+      wrap.appendChild(btn);
+    });
+    chat.appendChild(wrap);
+  }
+  chat.scrollTop = chat.scrollHeight;
+}
+
+function userMsg(text){
+  const chat = document.getElementById('chat');
+  const row = document.createElement('div');
+  row.className = 'row user';
+  row.innerHTML = `<div class="bubble user">${escHtml(text)}</div>`;
+  chat.appendChild(row);
+  chat.scrollTop = chat.scrollHeight;
+}
+
+function typing(cb, delay=900){
+  const chat = document.getElementById('chat');
+  const row = document.createElement('div');
+  row.className = 'row app';
+  row.innerHTML = `<div class="avatar">🤖</div><div class="typing"><span class="dot"></span><span class="dot"></span><span class="dot"></span></div>`;
+  chat.appendChild(row);
+  chat.scrollTop = chat.scrollHeight;
+  setTimeout(()=>{ row.remove(); cb(); }, delay);
+}
+
+function escHtml(t){ return t.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;'); }
+
+// =========================================================
+// KEYWORD DETECTION
+// =========================================================
+function detectCategory(text){
+  if(/食べ|偏食|給食|ごはん|ご飯|食事|口.*開|嫌い.*食|食.*嫌い|飲/.test(text)) return 'food';
+  if(/離席|立ち上|歩き回|多動|じっと.*(でき|してい)|席.*(離|立)/.test(text)) return 'seat';
+  if(/癇癪|かんしゃく|パニック|泣く|泣き|叫|崩れ|暴れ/.test(text) && !/食べ/.test(text)) return 'meltdown';
+  if(/伝え|話せ|言葉.*出|要求.*でき|コミュニケーション|叩.*(伝|教)|カード/.test(text)) return 'comm';
+  return 'other';
+}
+
+function extractItem(text){
+  const m = text.match(/「([^」]+)」|([^\s、。！？\n]{1,10}(?:ごはん|飯|料理|食品|おかず|パン|もの|こと|行動|場面))/);
+  if(m) return m[1]||m[2];
+  const food = text.match(/白ごはん|白飯|ごはん|パン|麺|おかず|肉|魚|野菜|卵|豆腐/);
+  if(food) return food[0];
+  return '';
+}
+
+function extractScene(text){
+  if(/給食.*(だけ|のみ|時|場面)|(だけ|のみ).*(給食)/.test(text)) return '給食のみ';
+  if(/家.*(だけ|のみ|で)/.test(text)) return '家庭のみ';
+  if(/(給食|事業所).*(家|家庭)|(家|家庭).*(給食|事業所)/.test(text)) return '給食・家庭どちらも';
+  if(/給食/.test(text)) return '給食';
+  if(/家|家庭/.test(text)) return '家庭';
+  return '';
+}
+
+function extractBehavior(text){
+  const b = [];
+  if(/泣く|泣き|泣いて/.test(text)) b.push('泣く');
+  if(/叫ぶ|叫び|叫んで/.test(text)) b.push('叫ぶ');
+  if(/パニック/.test(text)) b.push('パニックになる');
+  if(/口.*開けない|食べない|拒否/.test(text)) b.push('口を開けない・拒否する');
+  if(/吐き出す|吐く/.test(text)) b.push('吐き出す');
+  if(/床に|座り込|倒れ/.test(text)) b.push('床に座り込む');
+  if(/立ち上|離席|席.*(立|離)|歩き回/.test(text)) b.push('立ち上がる・離席する');
+  if(/叩く|蹴る|他害/.test(text)) b.push('叩く・蹴る');
+  if(/物.*投げ|投げ.*物/.test(text)) b.push('物を投げる');
+  return b.join('・') || '詳細を確認中';
+}
+
+function parseQR(text, options){
+  const n = parseInt(text.trim());
+  if(n >= 1 && n <= options.length) return options[n-1];
+  return text.trim();
+}
+
+// =========================================================
+// QUESTION QUEUE BUILDER
+// =========================================================
+function buildQueue(slots){
+  const q = [];
+  const cat = slots.category;
+
+  if(cat === 'food'){
+    if(!slots.scene)
+      q.push({ key:'scene', text:`「${slots.targetItem||'その食品'}」を食べない場面を教えてください。`, qr:['給食・事業所のみ','家庭のみ','給食と家庭どちらも','特定の器・盛り方の時だけ'] });
+    if(!slots.behavior || slots.behavior==='詳細を確認中')
+      q.push({ key:'behavior', text:'食べない時のお子さまの様子はどれに近いですか？', qr:['口を開けない・顔を背ける','口に入れるが吐き出す','器を押す・払いのける','泣く・パニックになる'] });
+    if(!slots.otherSimilar)
+      q.push({ key:'otherSimilar', text:'パン・麺など他の主食は食べますか？', qr:['何でも食べる','パン・麺など特定のものなら食べる','主食全般が難しい','好き嫌いが多い'] });
+    if(!slots.modifiedOk)
+      q.push({ key:'modifiedOk', text:'おかずをかけたり混ぜたりすると食べますか？', qr:['おかずをかけると食べる','混ぜると食べる','温度・形を変えると食べる','どの形でも食べない'] });
+    if(!slots.staffResponse)
+      q.push({ key:'staffResponse', text:'食べない時、職員はどのように対応していますか？', qr:['すぐにごはんを下げる','食べるように声かけをする','しばらく様子を見る','対応が職員によって異なる'] });
+  }
+
+  else if(cat === 'seat'){
+    if(!slots.scene)
+      q.push({ key:'scene', text:'離席が起きやすい場面を教えてください。', qr:['集団活動・製作の時','食事の時','課題・学習中','場面を問わず'] });
+    if(!slots.behavior || slots.behavior==='詳細を確認中')
+      q.push({ key:'behavior', text:'離席の様子はどれに近いですか？', qr:['室内を歩き回る','他の子の場所・物に近づく','出口・外など危険な場所へ向かう','同じ場所を行き来する'] });
+    if(!slots.modifiedOk)
+      q.push({ key:'modifiedOk', text:'声をかけると席に戻りますか？', qr:['すぐ戻る','少し待つと戻る','複数回促せば戻る','なかなか戻らない'] });
+    if(!slots.staffResponse)
+      q.push({ key:'staffResponse', text:'離席した後、職員はどのように対応していますか？', qr:['追いかけて声をかける','その場で待つ','他の活動に誘う','対応が職員によって異なる'] });
+    if(!slots.background)
+      q.push({ key:'background', text:'離席が増える時に思い当たることはありますか？', qr:['課題が難しい・長い','音や光など感覚刺激が多い','退屈・刺激が少ない','特に思い当たらない'] });
+  }
+
+  else if(cat === 'meltdown'){
+    if(!slots.scene)
+      q.push({ key:'scene', text:'どんな場面でパニック・癇癪が起きやすいですか？', qr:['要求が通らない時','予定・ルーティンの変更時','感覚刺激が強い時','課題・指示が出た時'] });
+    if(!slots.behavior || slots.behavior==='詳細を確認中')
+      q.push({ key:'behavior', text:'パニックの様子はどれに近いですか？', qr:['泣く・叫ぶ','床に倒れる・座り込む','物を投げる・壊す','自分や他者を叩く'] });
+    if(!slots.modifiedOk)
+      q.push({ key:'modifiedOk', text:'どのくらい続きますか？また落ち着きやすい対応はありますか？', qr:['5分未満・声かけで落ち着く','5〜15分・好きな物で落ち着く','15分以上・そっとすると落ち着く','対応しても長く続く'] });
+    if(!slots.staffResponse)
+      q.push({ key:'staffResponse', text:'パニック中、職員はどのように対応していますか？', qr:['声かけ・なだめる','好きな物・場所へ誘導する','そっとしておく','対応が職員によって異なる'] });
+    if(!slots.background)
+      q.push({ key:'background', text:'パニックが増える時に思い当たることはありますか？', qr:['睡眠・体調の影響が大きい','伝えたいことが伝わらない','感覚過敏がある','こだわりへの抵抗が強い'] });
+  }
+
+  else if(cat === 'comm'){
+    if(!slots.scene)
+      q.push({ key:'scene', text:'一番困っているコミュニケーションはどれですか？', qr:['欲しいものが伝えられない','嫌・やめてが伝えられない','言葉だけでは理解しにくい','やりとりが続かない'] });
+    if(!slots.behavior || slots.behavior==='詳細を確認中')
+      q.push({ key:'behavior', text:'現在、主にどのように伝えていますか？', qr:['少し言葉で伝える','身振り・指差し','職員の手を引く','泣く・叩くなど行動で伝える'] });
+    if(!slots.otherSimilar)
+      q.push({ key:'otherSimilar', text:'言葉の理解はどのくらいできますか？', qr:['短い文なら理解できる','単語レベルなら分かる','視覚支援があれば分かる','難しい'] });
+    if(!slots.modifiedOk)
+      q.push({ key:'modifiedOk', text:'まず伸ばしたいコミュニケーションはどれですか？', qr:['欲しいものを伝える','嫌・終わりを伝える','助けを求める','呼びかける・名前を呼ぶ'] });
+    if(!slots.background)
+      q.push({ key:'background', text:'使いやすそうな手段はどれですか？', qr:['言葉（発声）','絵カード・写真','ジェスチャー・身振り','タブレット・AAC機器'] });
+  }
+
+  else {
+    if(!slots.scene)
+      q.push({ key:'scene', text:'その行動はどんな場面で起きやすいですか？', qr:['特定の活動・場面','全般的に起きやすい','特定の人がいる時','環境が変わる時'] });
+    if(!slots.behavior || slots.behavior==='詳細を確認中')
+      q.push({ key:'behavior', text:'行動の直後に何が起きていますか？', qr:['職員が声をかけ・近づく','活動が中断される','本人が求めたものが手に入る','特に変化がない'] });
+    if(!slots.strength)
+      q.push({ key:'strength', text:'お子さんの好きなことや強みはなんですか？', qr:['感覚遊び（揺れ・水・音など）','特定の絵本・動画・音楽','特定の人との関わり','達成感・褒められること'] });
+    if(!slots.staffResponse)
+      q.push({ key:'staffResponse', text:'これまでの支援で効果があったことはありますか？', qr:['視覚スケジュール・手順表','短く穏やかな声かけ','選択肢を与える','まだ試せていない'] });
+  }
+
+  return q;
+}
+
+// =========================================================
+// MAIN FLOW
+// =========================================================
+function handleInput(text){
+  const t = text.trim();
+  if(!t) return;
+
+  // Disable QR buttons of current question
+  document.querySelectorAll('.qr-btn').forEach(b=>b.onclick=null);
+
+  userMsg(t);
+  const inp = document.getElementById('inp');
+  inp.value = '';
+  inp.style.height = '';
+
+  setTimeout(()=>{
+    if(S.phase === 'welcome'){
+      processInitial(t);
+    } else if(S.phase === 'asking'){
+      processAnswer(t);
+    }
+  }, 200);
+}
+
+function processInitial(text){
+  S.slots.rawText = text;
+  S.slots.category = detectCategory(text);
+  S.slots.targetItem = extractItem(text) || 'その行動';
+  S.slots.scene = extractScene(text);
+  S.slots.behavior = extractBehavior(text);
+
+  // Rebuild queue removing already-known slots
+  S.qQueue = buildQueue(S.slots);
+  S.phase = 'asking';
+
+  const item = S.slots.targetItem || 'そのこと';
+  const cat = S.slots.category;
+  const catLabel = {food:'食事・偏食',seat:'離席・多動',meltdown:'癇癪・パニック',comm:'コミュニケーション',other:'行動支援'}[cat];
+
+  typing(()=>{
+    let ack = `「${escHtml(item)}」についての相談ですね。<b>${catLabel}</b>の支援として整理します。`;
+    if(S.slots.scene) ack += `<br>場面は<b>「${escHtml(S.slots.scene)}」</b>で起きやすいこと、確認できました。`;
+    if(S.slots.behavior && S.slots.behavior !== '詳細を確認中') ack += `<br>様子は<b>「${escHtml(S.slots.behavior)}」</b>のようですね。`;
+    ack += '<br><br>いくつか確認させてください。';
+    appMsg(ack);
+    setTimeout(askNext, 400);
+  }, 1000);
+}
+
+function askNext(){
+  if(S.qQueue.length === 0 || S.turn >= 5){
+    typing(()=>{
+      appMsg('ありがとうございます。情報が揃いました。支援計画を作成します。');
+      setTimeout(generatePlan, 600);
+    }, 700);
+    return;
+  }
+  const q = S.qQueue.shift();
+  S.currentKey = q.key;
+  S.currentQR = q.qr || [];
+  S.turn++;
+  typing(()=>appMsg(q.text, q.qr), 700);
+}
+
+function processAnswer(text){
+  const val = S.currentQR.length ? parseQR(text, S.currentQR) : text;
+  if(S.currentKey) S.slots[S.currentKey] = val;
+  setTimeout(askNext, 300);
+}
+
+// =========================================================
+// PLAN GENERATOR
+// =========================================================
+function generatePlan(){
+  const s = S.slots;
+  const cat = s.category;
+  let html = '';
+
+  if(cat==='food') html = planFood(s);
+  else if(cat==='seat') html = planSeat(s);
+  else if(cat==='meltdown') html = planMeltdown(s);
+  else if(cat==='comm') html = planComm(s);
+  else html = planOther(s);
+
+  const planHtml = `
+    <div class="plan-wrap">${html}</div>
+    <button class="btn-print no-print" onclick="window.print()">🖨️ 印刷・PDF保存</button>
+    <button class="btn-restart no-print" onclick="location.reload()">最初からやり直す</button>
+    <p class="note-s no-print">※ この計画は原案です。最終判断は児発管・支援者が行ってください。</p>
+  `;
+
+  typing(()=>{
+    const chat = document.getElementById('chat');
+    const row = document.createElement('div');
+    row.className = 'row app';
+    row.innerHTML = `<div class="avatar">🤖</div><div class="bubble app" style="max-width:100%;width:100%">${planHtml}</div>`;
+    chat.appendChild(row);
+    chat.scrollTop = chat.scrollHeight;
+  }, 800);
+}
+
+// ---- Helpers ----
+function sec(title, body){ return `<div class="plan-section"><h4>${title}</h4>${body}</div>`; }
+function abcTbl(rows){ return `<table class="abc-tbl">${rows.map(([k,v])=>`<tr><th>${k}</th><td>${v}</td></tr>`).join('')}</table>`; }
+function stps(items){ return items.filter(Boolean).map((t,i)=>`<div class="step-li"><span class="snum">${i+1}</span><span>${t}</span></div>`).join(''); }
+function goalBox(t){ return `<div class="goal-box">${t}</div>`; }
+function parentBox(t){ return `<div class="parent-box">${t}</div>`; }
+function chkList(items){ return items.filter(Boolean).map(t=>`<div class="chk-item"><div class="chkbox"></div><span>${t}</span></div>`).join(''); }
+
+// ---- FOOD ----
+function planFood(s){
+  const item = s.targetItem || '食品';
+  const beh  = s.behavior || '食べない・拒否する';
+  const scene = s.scene || '食事場面';
+  const other = s.otherSimilar || '未確認';
+  const mod   = s.modifiedOk || '未確認';
+  const staff = s.staffResponse || '未確認';
+
+  const isPanic = /泣く|パニック/.test(beh);
+  const canMix  = /混ぜ|おかず|形/.test(mod) && !/どの形/.test(mod);
+
+  const g = canMix
+    ? `${scene}で「${item}」が提示された時、職員の「少しだけ」予告後に${/混ぜ/.test(mod)?'混ぜた':' おかずをかけた'}「${item}」を一口食べられる日が、2週間で8割以上になる。`
+    : `${scene}で「${item}」が提示された時、${isPanic?'泣く・パニックになる前に':'拒否する前に'}「いや」カードで伝えられる場面が2週間で8割以上になる。`;
+
+  const h1 = /どの形/.test(mod)
+    ? `食べること全般への不安・こだわりの可能性`
+    : `「${item}」特有の感覚特性（食感・見た目・匂い）への逃避・回避の可能性`;
+  const h2 = isPanic && /給食|事業所/.test(scene)
+    ? '給食場面そのものへの不安・嫌悪も併存の可能性（量・盛り付け・集団場面のプレッシャーなど）' : '';
+
+  return [
+    isPanic&&/自傷|他害/.test(beh) ? `<div class="warn-box">⚠️ 自傷・他害がある場合は安全計画を優先し、管理者・保護者・専門職に相談してください。</div>` : '',
+    sec('ABC分析', abcTbl([
+      ['A（先行条件）', `${scene}で「${item}」が提示される`],
+      ['B（行動）', beh],
+      ['C（結果）', `「${item}」が下げられる／職員が声をかける（現在の対応：${staff}）`],
+    ])),
+    sec('機能仮説', `
+      <div style="background:#ebf8ff;border:1px solid #bee3f8;border-radius:8px;padding:10px 12px;margin-bottom:8px">
+        <span style="display:inline-block;background:#4299e1;color:white;font-size:.75rem;font-weight:700;padding:2px 9px;border-radius:99px;margin-bottom:5px">最有力</span>
+        <p style="font-size:.88rem;line-height:1.7">${h1}</p>
+      </div>
+      ${h2?`<div style="background:#fffff0;border:1px solid #fefcbf;border-radius:8px;padding:10px 12px;margin-bottom:8px"><span style="display:inline-block;background:#ecc94b;color:white;font-size:.75rem;font-weight:700;padding:2px 9px;border-radius:99px;margin-bottom:5px">補助的</span><p style="font-size:.88rem;line-height:1.7">${h2}</p></div>`:''}
+      <p style="font-size:.78rem;color:#a0aec0">※ 機能は断定せず仮説として活用してください</p>
+    `),
+    sec('短期目標（案）', goalBox(g)),
+    sec('先行条件への支援', stps([
+      `「${item}」はひとさじ分だけ小皿に分けて提示する（量の圧迫感を下げる）`,
+      canMix ? `${/混ぜ/.test(mod)?'混ぜた形で':'おかずをかけた形で'}提示し、段階的に素材に近づける` : 'ふりかけ・トッピングをかけた状態から始める',
+      '食前に「今日はひとくちだけ」を写真・カードで予告する',
+      '「食べたら終わり」のカードを机上に置き見通しを伝える',
+    ])),
+    sec('代替行動（FCT）', stps([
+      '「いや」「おしまい」カードを机上に置いておく',
+      isPanic ? '早期サイン（表情・声・姿勢）が出たらカードを指差し「これで伝えてね」と促す' : 'カードを指差して「これで伝えてね」と促す',
+      'カードが使えたら「伝えられたね」とすぐ受け止める',
+    ])),
+    sec('結果への支援', stps([
+      `一口でも「${item}」を食べたら、すぐ具体的称賛（「食べられたね」）`,
+      isPanic ? `${/すぐ.*下げ/.test(staff)?'パニック後すぐに下げず、落ち着いてからカードで「いや」を伝える流れを作る（すぐ下げると「泣けば下げてもらえる」が強化される）':'落ち着いてからカードで「いや」を伝える流れを作る'}` : '泣かずに座れた時も称賛する',
+      '対応を職員間で統一する（片方が強要・もう片方が免除はNG）',
+    ])),
+    sec('シェイピング計画', `
+      <table class="abc-tbl">
+        <tr><th>段階</th><th>目標</th></tr>
+        <tr><td>第1段階</td><td>「${item}」が目の前にあっても泣かずに座れる</td></tr>
+        <tr><td>第2段階</td><td>${canMix?(/混ぜ/.test(mod)?'混ぜた形で':'おかずをかけた形で')+`「${item}」を一口食べる`:`トッピングをかけた「${item}」を一口食べる`}</td></tr>
+        <tr><td>第3段階</td><td>少量（ひとさじ2〜3杯）を食べる</td></tr>
+        <tr><td>第4段階</td><td>通常量に近づける</td></tr>
+      </table>
+    `),
+    sec('職員向け手順', stps([
+      `食事前：「今日はひとくちだけ」を写真・カードで予告する`,
+      `「${item}」はひとさじ分だけ小皿に分け、食べやすい形で提示する`,
+      '「いや」「おしまい」カードを机上に置く',
+      isPanic ? '早期サインが出たらカードを指差し気持ちを受け止める' : 'カードが使えたらすぐ「伝えられたね」と受け止める',
+      `一口でも食べたら落ち着いた声ですぐ称賛する`,
+      '対応を職員間で統一し、毎回ABCメモを残す',
+    ])),
+    sec('保護者説明文（案）', parentBox(`〇〇さんは、${other!=='未確認'&&!/主食全般/.test(other)?`${other}ため食べる力は十分あります。`:'いくつかの食品では食べる力を発揮できています。'}${scene}では「${item}」に対して${beh}という様子が見られています。事業所では、少量・食べやすい形から始め、「いや」を伝えられる練習も並行して進めていきます。ご家庭では無理のない範囲でご協力いただき、気づいたことを共有してください。`)),
+    sec('児発管チェックリスト', chkList([
+      '行動が観察可能に定義されているか',
+      '機能を断定していないか（仮説として示しているか）',
+      '代替行動（FCTカード）が設定されているか',
+      '強化ベースになっているか',
+      'シェイピング計画があるか',
+      '職員間で一貫して実施できるか',
+      '保護者説明として責める表現がないか',
+    ])),
+  ].join('');
+}
+
+// ---- SEAT ----
+function planSeat(s){
+  const beh   = s.behavior || '離席する';
+  const scene = s.scene || '活動場面';
+  const back  = s.background || '未確認';
+  const staff = s.staffResponse || '未確認';
+  const ret   = s.modifiedOk || '未確認';
+  const danger= /危険|出口|外/.test(beh);
+
+  const h1 = /課題|難し|長/.test(back) ? `「${scene}」での課題難易度・活動の長さからの逃避・回避の可能性`
+    : /感覚|音|光/.test(back) ? `感覚刺激（音・光・人混みなど）からの逃避・回避の可能性`
+    : `「${scene}」での活動からの逃避・回避の可能性`;
+
+  const retTime = /すぐ/.test(ret) ? '1〜2分' : /複数回/.test(ret) ? '5分' : '3分';
+  const g = `「${scene}」で活動が始まってから、職員の声かけ1回以内で着席を維持できる時間が、2週間で1回あたり${retTime}以上になる。`;
+
+  return [
+    danger ? `<div class="warn-box">⚠️ 逸走リスクがあります。安全確保・管理者報告を優先してください。</div>` : '',
+    sec('ABC分析', abcTbl([
+      ['A（先行条件）', `「${scene}」で活動が始まる・指示が出る`],
+      ['B（行動）', beh],
+      ['C（結果）', `活動が中断される／職員が追いかける（現在の対応：${staff}）`],
+      ['背景事象', back],
+    ])),
+    sec('機能仮説', `
+      <div style="background:#ebf8ff;border:1px solid #bee3f8;border-radius:8px;padding:10px 12px;margin-bottom:6px">
+        <span style="display:inline-block;background:#4299e1;color:white;font-size:.75rem;font-weight:700;padding:2px 9px;border-radius:99px;margin-bottom:5px">最有力</span>
+        <p style="font-size:.88rem;line-height:1.7">${h1}</p>
+      </div>
+      <div style="background:#fffff0;border:1px solid #fefcbf;border-radius:8px;padding:10px 12px">
+        <span style="display:inline-block;background:#ecc94b;color:white;font-size:.75rem;font-weight:700;padding:2px 9px;border-radius:99px;margin-bottom:5px">補助的</span>
+        <p style="font-size:.88rem;line-height:1.7">感覚刺激（動きの欲求）による感覚・自動強化の可能性</p>
+      </div>
+    `),
+    sec('短期目標（案）', goalBox(g)),
+    sec('先行条件への支援', stps([
+      '活動前に視覚スケジュールで流れと終わりを伝える',
+      '活動時間を短く区切り、終わりが見えるタイマーを使う',
+      /課題|難し/.test(back) ? '課題の難易度・量を調整し、最初は必ず成功できる内容にする' : '着席できる好きな活動から始める',
+      '席の位置を整える（出口・感覚刺激源から離す）',
+    ])),
+    sec('代替行動（FCT）', stps([
+      '「休憩」カードを机上に置き、使い方を教える',
+      '立ち上がりそうな早期サインでカードを指差す',
+      'カードが使えたら「教えてくれたね」と即時受け止め、短い休憩を提供する',
+      '休憩後に戻る流れを視覚スケジュールで確認する',
+    ])),
+    sec('結果への支援', stps([
+      '着席できている間はこまめに声をかけ称賛する',
+      /追いかけ/.test(staff) ? '離席後に追いかけすぎない（追いかけが強化子になる場合がある）' : '離席後は安全確認のみ行い、誘導は短い言葉で行う',
+      '戻れた時に「戻れたね」と称賛し、次の活動へつなげる',
+      danger ? '⚠️ 逸走リスクがある場合は出口の安全確保と職員配置を先に整える' : '',
+    ])),
+    sec('職員向け手順', stps([
+      '活動前：スケジュールとタイマーで見通しを伝える',
+      '「休憩」カードを机上に設置する',
+      '着席中はこまめに声をかけ・称賛する',
+      '立ち上がりそうなサインで「休憩カードどうぞ」と促す',
+      '離席後は安全確認→短い言葉→戻る誘導の順で対応する',
+      '毎回の離席回数・時間・場面をメモする',
+    ])),
+    sec('保護者説明文（案）', parentBox(`〇〇さんは、${scene}の場面で${beh}ことがあります。活動の難しさや長さ、または動きたいという感覚的な欲求が影響している可能性があります。事業所では、活動を短く区切り終わりが分かるようにしながら、「休憩」を伝えられる練習を進めています。`)),
+    sec('児発管チェックリスト', chkList([
+      '行動が観察可能に定義されているか',
+      danger ? '⚠️ 逸走リスクがある場合の安全計画があるか' : null,
+      '代替行動（休憩カードなど）が設定されているか',
+      'シェイピング計画があるか（着席時間を段階的に延ばす）',
+      '職員間で対応が統一されているか',
+    ])),
+  ].join('');
+}
+
+// ---- MELTDOWN ----
+function planMeltdown(s){
+  const beh   = s.behavior || 'パニック・癇癪';
+  const scene = s.scene || '特定の場面';
+  const dur   = s.modifiedOk || '未確認';
+  const staff = s.staffResponse || '未確認';
+  const back  = s.background || '未確認';
+  const selfharm = /自分.*叩|他者.*叩|自傷|他害/.test(beh);
+
+  const h1 = /要求/.test(scene) ? '要求・獲得機能の可能性（要求が通らないことへの対抗手段）'
+    : /予定|変更/.test(scene) ? '変化・不確実性からの逃避・回避機能の可能性'
+    : /感覚|音|人混み/.test(scene) ? '感覚刺激からの逃避・回避機能の可能性'
+    : '課題・指示からの逃避・回避機能の可能性';
+
+  const g = `${scene}の場面で、パニックになる前に「いや」「休憩」カードを職員の促し1回以内で使えた場面が、2週間で8割以上になる。`;
+
+  return [
+    selfharm ? `<div class="warn-box">⚠️ 自傷・他害がある場合は安全計画を優先し、管理者・保護者・専門職に相談してください。</div>` : '',
+    sec('ABC分析', abcTbl([
+      ['A（先行条件）', scene],
+      ['B（行動）', beh],
+      ['C（結果）', `職員が対応する（現在の対応：${staff}）`],
+      ['背景事象', back],
+    ])),
+    sec('機能仮説', `
+      <div style="background:#ebf8ff;border:1px solid #bee3f8;border-radius:8px;padding:10px 12px;margin-bottom:6px">
+        <span style="display:inline-block;background:#4299e1;color:white;font-size:.75rem;font-weight:700;padding:2px 9px;border-radius:99px;margin-bottom:5px">最有力</span>
+        <p style="font-size:.88rem;line-height:1.7">${h1}</p>
+      </div>
+      <div style="background:#fffff0;border:1px solid #fefcbf;border-radius:8px;padding:10px 12px">
+        <span style="display:inline-block;background:#ecc94b;color:white;font-size:.75rem;font-weight:700;padding:2px 9px;border-radius:99px;margin-bottom:5px">補助的</span>
+        <p style="font-size:.88rem;line-height:1.7">気持ちや要求を伝える手段が未獲得のため、行動で表現している可能性</p>
+      </div>
+    `),
+    sec('早期サインの共有', `
+      <p style="font-size:.86rem;line-height:1.7;margin-bottom:8px">パニック前のサインを職員間で共有し、サインが出たら先手で対応します。</p>
+      <table class="abc-tbl">
+        <tr><th>サインの種類</th><th>確認すること</th></tr>
+        <tr><td>表情・視線</td><td>眉間にしわ・視線が泳ぐ・目が大きくなる</td></tr>
+        <tr><td>声・言葉</td><td>声が大きくなる・同じ言葉を繰り返す</td></tr>
+        <tr><td>身体</td><td>姿勢が崩れる・手を握る・耳をふさぐ</td></tr>
+      </table>
+    `),
+    sec('短期目標（案）', goalBox(g)),
+    sec('先行条件への支援', stps([
+      '視覚スケジュールで活動の流れと終わりを事前に伝える',
+      /予定|変更/.test(scene) ? '予定変更は事前に写真・カードで予告する' : '',
+      /感覚|音/.test(scene) ? '感覚刺激（音・人混み）を調整する。イヤーマフ・静かな場所を準備する' : '',
+      '「いや」「休憩」「手伝って」カードを机上に置いておく',
+    ])),
+    sec('代替行動（FCT）', stps([
+      '早期サインが出たら「いや」「休憩」カードを指差す',
+      'カードが使えたらすぐ「伝えられたね」と受け止め、安全な場所で2分休憩する',
+      '落ち着いてから次の活動へ戻る流れを視覚化する',
+    ])),
+    sec('パニック中の対応', stps([
+      'まず安全確認（周囲との距離を確保する）',
+      '短い言葉・穏やかな声で「大丈夫だよ」と伝える（長い説明はしない）',
+      /そっと/.test(staff) ? 'そっとしておき、安全のみ確認しながら待つ' : `「${staff}」の対応で落ち着ける環境を作る`,
+      '落ち着いた後にカードを指差し「次はこれで教えてね」と伝える',
+      selfharm ? '⚠️ 自傷・他害は管理者へ即報告。事後にABC記録を作成する' : '',
+    ])),
+    sec('保護者説明文（案）', parentBox(`〇〇さんは、${scene}の場面で${beh}ことがあります。気持ちや要求を伝える方法がまだ見つかっておらず、行動で表現している様子があります。事業所では、パニックになる前の早期サインに気づき「いや」「休憩」カードで伝えられる練習を進めています。`)),
+    sec('児発管チェックリスト', chkList([
+      '行動が観察可能に定義されているか',
+      selfharm ? '⚠️ 自傷・他害がある場合の安全計画があるか' : null,
+      '早期サインが職員間で共有されているか',
+      '代替行動（FCT）が設定されているか',
+      '機能仮説を断定していないか',
+    ])),
+  ].join('');
+}
+
+// ---- COMM ----
+function planComm(s){
+  const concern = s.scene || '欲しいものを伝えること';
+  const curMeans= s.behavior || '行動で伝える';
+  const compreh = s.otherSimilar || '未確認';
+  const target  = s.modifiedOk || '欲しいものを伝える';
+  const means   = s.background || '絵カード・写真';
+
+  const examples = {
+    '欲しいものを伝える': ['ください','貸して','もう一回'],
+    '嫌・終わりを伝える': ['いや','やめて','おしまい'],
+    '助けを求める':       ['手伝って','むずかしい','来て'],
+    '呼びかける':         ['先生','見て','一緒に'],
+  };
+  const ex = (examples[target]||examples['欲しいものを伝える']).join('・');
+
+  const g = `${concern}の場面で、職員のプロンプト1回以内で${means}を使って「${(examples[target]||['ください'])[0]}」を伝えられた場面が、2週間で8割以上になる。`;
+
+  return [
+    /叩く|蹴る/.test(curMeans) ? `<div class="warn-box">⚠️ 他者を叩く行動がある場合、安全確保を優先しながらFCTを進めてください。</div>` : '',
+    sec('現状整理', abcTbl([
+      ['一番の困り感', concern],
+      ['現在の伝え方', curMeans],
+      ['言葉の理解', compreh],
+      ['目標', target],
+      ['使いやすそうな手段', means],
+    ])),
+    sec('機能仮説', `
+      <div style="background:#ebf8ff;border:1px solid #bee3f8;border-radius:8px;padding:10px 12px">
+        <span style="display:inline-block;background:#4299e1;color:white;font-size:.75rem;font-weight:700;padding:2px 9px;border-radius:99px;margin-bottom:5px">仮説</span>
+        <p style="font-size:.88rem;line-height:1.7">${target}の手段が未獲得のため、現在の方法（${curMeans}）で機能を満たしている可能性</p>
+      </div>
+    `),
+    sec('短期目標（案）', goalBox(g)),
+    sec('FCT計画', stps([
+      `${means}を使った伝え方を選ぶ（例：「${ex}」など）`,
+      '最初は職員がプロンプトして成功させる（手を添える・カードを指差す・見本を見せる）',
+      '使えたらすぐに「伝えてくれたね」と受け止め、目標の結果を返す',
+      '徐々にプロンプトを減らす（時間遅延・距離を離す）',
+      '家庭・園でも同じ手段を使えるよう保護者と共有する',
+    ])),
+    sec('環境整備', stps([
+      /視覚|単語/.test(compreh)||/カード|写真/.test(means) ? '絵・写真カードを目線の高さに設置し、いつでも使える状態にする' : '短い言葉・ゆっくり話す・繰り返しで伝える工夫をする',
+      '要求できる機会を意図的に作る（欲しいものを少し遠ざける、選択場面を設定する）',
+      '伝えようとした時には必ず反応する',
+    ])),
+    sec('保護者説明文（案）', parentBox(`〇〇さんは、${concern}ことに困っている様子があります。現在は${curMeans}で伝えようとしています。伝えたい気持ちはあるので、${means}を使ってより伝わりやすい方法を少しずつ練習しています。`)),
+    sec('児発管チェックリスト', chkList([
+      '代替コミュニケーション手段が発達段階に合っているか',
+      'プロンプトとフェイディング計画があるか',
+      '使えた直後に職員が反応できるか',
+      '家庭・園での般化を考えているか',
+    ])),
+  ].join('');
+}
+
+// ---- OTHER ----
+function planOther(s){
+  const behType = s.targetItem || 'その行動';
+  const scene   = s.scene || '特定の場面';
+  const conseq  = s.behavior || '未確認';
+  const strength= s.strength || '未確認';
+  const staff   = s.staffResponse || '未確認';
+  const selfharm= /自傷|自分.*叩/.test(behType);
+
+  return [
+    selfharm ? `<div class="warn-box">⚠️ 自傷がある場合は安全計画を優先し、管理者・保護者・専門職と連携してください。</div>` : '',
+    sec('ABC分析', abcTbl([
+      ['A（先行条件）', scene],
+      ['B（行動）', behType],
+      ['C（結果）', conseq],
+      ['強み・強化子候補', strength],
+    ])),
+    sec('機能仮説', `
+      <div style="background:#ebf8ff;border:1px solid #bee3f8;border-radius:8px;padding:10px 12px">
+        <span style="display:inline-block;background:#4299e1;color:white;font-size:.75rem;font-weight:700;padding:2px 9px;border-radius:99px;margin-bottom:5px">仮説</span>
+        <p style="font-size:.88rem;line-height:1.7">1〜2週間のABC記録を積み重ねることで機能仮説を特定します</p>
+      </div>
+    `),
+    sec('観察・記録のポイント', `
+      <table class="abc-tbl">
+        <tr><th>記録項目</th><th>内容</th></tr>
+        <tr><td>行動直前</td><td>誰が何を・場所・活動・直前の声かけ</td></tr>
+        <tr><td>行動</td><td>具体的な動き・持続時間・強度</td></tr>
+        <tr><td>行動直後</td><td>職員の反応・活動の変化・本人が得たもの</td></tr>
+        <tr><td>頻度</td><td>1日何回・どの活動で</td></tr>
+      </table>
+    `),
+    sec('今すぐ試せる支援', stps([
+      strength!=='未確認' ? `強み（${strength}）を活動に取り入れ、参加しやすい環境を作る` : '本人の好きな活動・物を確認し、強化子として活用する',
+      staff!=='未確認' ? `過去に効果があった「${staff}」を継続・強化する` : '視覚スケジュールで活動の見通しを伝える',
+      '「いや」「休憩」「手伝って」カードで気持ちを伝えられるようにする',
+      '望ましい行動が出た直後に即時称賛する',
+    ])),
+    sec('保護者説明文（案）', parentBox(`〇〇さんは「${behType}」が${scene}の場面で見られています。原因を詳しく把握するために観察を続けています。${strength!=='未確認'?`${strength}を活かしながら、`:''}本人が安心して過ごせる環境を整えていきます。`)),
+    sec('児発管チェックリスト', chkList([
+      selfharm ? '⚠️ 自傷がある場合の安全計画があるか' : null,
+      '行動が観察可能に定義されているか',
+      '機能仮説を断定していないか',
+      '観察記録の計画があるか',
+    ])),
+  ].join('');
+}
+
+// =========================================================
+// INPUT HANDLING
+// =========================================================
+function send(){ handleInput(document.getElementById('inp').value); }
+function handleKey(e){ if(e.key==='Enter'&&!e.shiftKey){ e.preventDefault(); send(); } }
+function resize(el){ el.style.height=''; el.style.height=Math.min(el.scrollHeight,100)+'px'; }
+
+// =========================================================
+// START
+// =========================================================
+window.onload = ()=>{
+  S.phase = 'welcome';
+  appMsg('こんにちは。ABA支援プランナーです。<br><br>お子さまの様子をできるだけ具体的に教えてください。<br><br><b>例：</b>「白ごはんを食べません。給食の時だけで、提示されると泣いてしまいます」');
+};
+</script>
+</body>
+</html>
