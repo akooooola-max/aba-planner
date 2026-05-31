@@ -57,10 +57,19 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Hiragino Sans','Yu Gothic',sa
 .bubble p{margin-bottom:8px}
 .bubble p:last-child{margin-bottom:0}
 
-.qr-wrap{display:flex;flex-wrap:wrap;gap:8px;padding-left:40px;margin-top:-4px}
-.qr-btn{background:white;border:2px solid #4299e1;color:#2b6cb0;border-radius:99px;padding:8px 14px;font-size:0.83rem;font-weight:600;cursor:pointer}
-.qr-btn:active{background:#4299e1;color:white}
-.qr-btn.used{background:#4299e1;color:white;pointer-events:none}
+.qr-wrap{display:flex;flex-direction:column;gap:6px;padding-left:40px;margin-top:-4px}
+.qr-item{background:white;border:2px solid #e2e8f0;border-radius:12px;padding:11px 14px;cursor:pointer;display:flex;align-items:center;gap:12px;transition:all 0.15s;box-shadow:0 1px 3px rgba(0,0,0,0.06)}
+.qr-item:active{border-color:#4299e1;background:#ebf8ff}
+.qr-item.selected{border-color:#4299e1;background:#ebf8ff;pointer-events:none}
+.qr-item.used{border-color:#cbd5e0;background:#f7fafc;pointer-events:none;opacity:0.6}
+.qr-item.selected .qr-check{background:#4299e1;border-color:#4299e1}
+.qr-item.selected .qr-check::after{opacity:1}
+.qr-check{width:22px;height:22px;border-radius:50%;border:2px solid #cbd5e0;flex-shrink:0;position:relative;transition:all 0.15s}
+.qr-check::after{content:'✓';position:absolute;inset:0;display:flex;align-items:center;justify-content:center;color:white;font-size:0.8rem;font-weight:700;opacity:0}
+.qr-num{width:22px;height:22px;border-radius:50%;background:#ebf8ff;color:#2b6cb0;font-size:0.78rem;font-weight:700;display:flex;align-items:center;justify-content:center;flex-shrink:0}
+.qr-item.selected .qr-num{background:#4299e1;color:white}
+.qr-text{font-size:0.9rem;color:#2d3748;line-height:1.4}
+.qr-hint{font-size:0.75rem;color:#a0aec0;padding-left:40px;margin-top:2px}
 
 .typing{display:flex;gap:4px;padding:12px 14px;background:white;border-radius:18px;border-bottom-left-radius:4px;width:56px;box-shadow:0 1px 4px rgba(0,0,0,0.08)}
 .dot{width:8px;height:8px;border-radius:50%;background:#a0aec0;animation:blink 1.2s infinite}
@@ -371,16 +380,36 @@ function addQR(labels) {
   const chat = document.getElementById('chat');
   const wrap = document.createElement('div');
   wrap.className = 'qr-wrap';
+
   labels.forEach((label, i) => {
-    const btn = document.createElement('button');
-    btn.className = 'qr-btn';
-    btn.textContent = `${i + 1}. ${label}`;
-    btn.onclick = () => {
-      wrap.querySelectorAll('.qr-btn').forEach(b => { b.classList.add('used'); b.onclick = null; });
-      handleInput(`${i + 1}`);
+    const item = document.createElement('div');
+    item.className = 'qr-item';
+    item.innerHTML = `<div class="qr-num">${i + 1}</div><div class="qr-check"></div><div class="qr-text">${esc(label)}</div>`;
+    item.onclick = () => {
+      // 選択済みなら無視
+      if (item.classList.contains('selected')) return;
+      // 他の選択肢をused状態に
+      wrap.querySelectorAll('.qr-item').forEach(el => {
+        el.classList.remove('selected');
+        el.classList.add('used');
+        el.onclick = null;
+      });
+      item.classList.remove('used');
+      item.classList.add('selected');
+      // テキスト欄に反映して自動送信
+      const inp = document.getElementById('inp');
+      inp.value = '';
+      setTimeout(() => handleInput(`${i + 1}`), 200);
     };
-    wrap.appendChild(btn);
+    wrap.appendChild(item);
   });
+
+  // ヒントテキスト
+  const hint = document.createElement('div');
+  hint.className = 'qr-hint';
+  hint.textContent = 'タップして選択、またはテキストで自由に入力できます';
+  wrap.appendChild(hint);
+
   chat.appendChild(wrap);
   chat.scrollTop = 99999;
 }
@@ -506,7 +535,7 @@ function extractQR(text) {
 async function handleInput(text) {
   const t = text.trim();
   if (!t || isLoading) return;
-  document.querySelectorAll('.qr-btn').forEach(b => { b.classList.add('used'); b.onclick = null; });
+  document.querySelectorAll('.qr-item').forEach(b => { b.classList.add('used'); b.onclick = null; });
   userMsg(t);
   disableInput();
   isLoading = true;
